@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iterator>
 #include <cstdlib>
+#include <time.h>
 
 #include "structs.h"
 #include "quaternion.h"
@@ -37,6 +38,7 @@ int yres = 600;
 int idx = 0;
 float delta_t = 0.05;
 int mode = 0; // 0 = drawing, 1 = orbit
+int wireframe = 0;
 float drawPlaneZ = 0.0;
 const float tol = 1e-10;
 
@@ -54,6 +56,7 @@ Eigen::Vector3f p_start, p_curr;
 bool is_pressed = false;
 
 vector<Vertex> vertex_buffer;
+vector<int> triangle_buffer;
 vector<Vec3f> normal_buffer;
 vector<Vec3f> color_buffer;
 
@@ -181,11 +184,11 @@ void display(void) {
     /* Set up lights in their specified positions. */
     set_lights();
     /* Specify the points and faces that we want drawn. */
-    // draw_axes();
+    draw_axes();
     /* draw sketched lines */
-    // draw_lines();
+    if (mode==0) {draw_lines();}
     /* draw mesh */
-    // draw_mesh();
+    draw_mesh();
     draw_triangulation();
     /* Swap active and hidden buffers. */
     glutSwapBuffers();
@@ -240,7 +243,7 @@ void draw_lines() {
 
     int n = drawnPoints.size();
     
-    for (int i=0; i < n; i++) {
+    for (int i=0; i < n-1; i++) {
     	Vertex p1 = drawnPoints[i];
     	Vertex p2 = drawnPoints[(i+1)%n];
     	glBegin(GL_LINES);
@@ -295,7 +298,9 @@ void draw_triangulation(void) {
 	// 	}
 	// }
 
-	glLineWidth(3.0);
+    // after pruning
+    srand (time(NULL));
+	glLineWidth(1.0);
 	for (int i=0; i < test.size(); i += 3) {
 		for (int j=0; j < 3; j++) {
 			glBegin(GL_LINES);
@@ -304,6 +309,14 @@ void draw_triangulation(void) {
 		    glVertex3f(test[i+(j+1)%3].x, test[i+(j+1)%3].y, test[i+(j+1)%3].z);
 		    glEnd();
 		}
+
+		// // draw triangles in color.
+		// glBegin(GL_TRIANGLES);
+		// glColor4f(((float) rand() / (RAND_MAX)), ((float) rand() / (RAND_MAX)), ((float) rand() / (RAND_MAX)), 0.5);
+		// glVertex3f(test[i].x, test[i].y, test[i].z);
+		// glVertex3f(test[i+1].x, test[i+1].y, test[i+1].z);
+		// glVertex3f(test[i+2].x, test[i+2].y, test[i+2].z);
+		// glEnd();
 	}
 }
 
@@ -311,33 +324,40 @@ void draw_triangulation(void) {
 /* Render mesh. */
 void draw_mesh(void) {
 
-	float ambient[3] = {0.5, 0.0, 0.0};
-	float diffuse[3] = {0.5, 0.0, 0.0};
-	float specular[3] = {0.5, 0.0, 0.0};
-	float shininess = 0.2;
-
-	// Generate color buffer.
-	for (int i=0; i < vertex_buffer.size(); i++) {
-		Vec3f c; 
-		c.x = 0.0; c.y = 0.7; c.z = 0.7;
-		color_buffer.push_back(c);
-	}
-
 	glPushMatrix();
 
-	/* Specify object material properties. */
-	glMaterialfv(GL_FRONT, GL_AMBIENT, ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    for (int i=0; i < triangle_buffer.size(); i += 3) {
+    	glBegin(GL_TRIANGLES);
+		glColor4f(0.0, 0.5, 0.5, 0.9);
+		glVertex3f(vertex_buffer[triangle_buffer[i]].x, vertex_buffer[triangle_buffer[i]].y, vertex_buffer[triangle_buffer[i]].z);
+		glVertex3f(vertex_buffer[triangle_buffer[i+1]].x, vertex_buffer[triangle_buffer[i+1]].y, vertex_buffer[triangle_buffer[i+1]].z);
+		glVertex3f(vertex_buffer[triangle_buffer[i+2]].x, vertex_buffer[triangle_buffer[i+2]].y, vertex_buffer[triangle_buffer[i+2]].z);
+		glEnd();
+    }
+    // draw reverse
+    for (int i=0; i < triangle_buffer.size(); i += 3) {
+    	glBegin(GL_TRIANGLES);
+		glVertex3f(vertex_buffer[triangle_buffer[i]].x, vertex_buffer[triangle_buffer[i]].y, -vertex_buffer[triangle_buffer[i]].z);
+		glVertex3f(vertex_buffer[triangle_buffer[i+2]].x, vertex_buffer[triangle_buffer[i+2]].y, -vertex_buffer[triangle_buffer[i+2]].z);
+		glVertex3f(vertex_buffer[triangle_buffer[i+1]].x, vertex_buffer[triangle_buffer[i+1]].y, -vertex_buffer[triangle_buffer[i+1]].z);
+		glEnd();
+    }
 
-    /* Specify object vertex and normals. */
-    glVertexPointer(3, GL_FLOAT, 0, &vertex_buffer[0]);
-    glNormalPointer(GL_FLOAT, 0, &normal_buffer[0]);
-    glColorPointer(3, GL_FLOAT, 0, &color_buffer[0]);
 
-    int buffer_size = vertex_buffer.size();
-    glDrawArrays(GL_TRIANGLES, 0, buffer_size);
+    // wireframe
+    if (wireframe == 1) {
+    	glLineWidth(0.5);
+		for (int i=0; i < triangle_buffer.size(); i += 3) {
+			for (int j=0; j < 3; j++) {
+				glBegin(GL_LINES);
+			    glColor4f(0.0, 0.0, 0.0, 1.0);
+			    glVertex3f(vertex_buffer[triangle_buffer[i+j]].x, vertex_buffer[triangle_buffer[i+j]].y, vertex_buffer[triangle_buffer[i+j]].z);
+			    glVertex3f(vertex_buffer[triangle_buffer[i+(j+1)%3]].x, vertex_buffer[triangle_buffer[i+(j+1)%3]].y, vertex_buffer[triangle_buffer[i+(j+1)%3]].z);
+			    glEnd();
+			}
+		}
+    }
+    
 
     /* Pop this transformation off the stack to make way for the next. */
 	glPopMatrix();
@@ -347,7 +367,7 @@ void draw_mesh(void) {
 void resample() {
 
 	int n = drawnPoints.size();
-	float length = 5.0;
+	float length = 3.0;
 	polyline.push_back(new p2t::Point(drawnPoints[0].x, drawnPoints[0].y));
 	int i=0;
 
@@ -486,8 +506,8 @@ void mouse_pressed(int button, int state, int x, int y) {
     		cdt->Triangulate();
     		triangles = cdt->GetTriangles();
 
-    		inflate(polyline, triangles, test, normal_buffer);
-
+    		inflate(polyline, triangles, vertex_buffer, normal_buffer, triangle_buffer);
+    		mode = 1;
   			glutPostRedisplay();
     	}
     }
@@ -554,8 +574,11 @@ void key_pressed(unsigned char key, int x, int y) {
         	mode = (mode + 1) % 2;
         	cerr << "Mode: " << mode << endl;
             break;
-        /* Clear drawing data. */
-        case 'c':
+        /* Toggle wireframe. */
+        case 'w':
+        	wireframe = (wireframe + 1) % 2;
+        	cerr << "Wireframe on: " << wireframe << endl;
+        	glutPostRedisplay();
         	break;
 		/* If spacebar is pressed, reset to original view. */
 		case ' ':

@@ -32,6 +32,9 @@ void labelTriangles(std::vector<HEF*> *hefs);
 
 void prune_branches(std::vector<HEV*> *hevs, std::vector<HEF*> *hef, std::vector<HEF*> *new_hefs);
 
+void create_mesh(std::vector<HEV*> *hevs, std::vector<HEF*> *new_hefs, 
+	std::vector<Vertex> &vertex_buffer, std::vector<int> &triangle_buffer);
+
 Eigen::Vector4f getBBoxDimensions(const std::vector<Vertex> &vertices);
 
 bool isOutsideCircle(const float x, const float y, const float r, const float x_c, const float y_c);
@@ -43,4 +46,5 @@ void halfedgeToBuffers(std::vector<HEV*> *hevs, std::vector<HEF*> *hefs,
 	std::vector<Vertex> &vertex_buffer, std::vector<Vec3f> &normal_buffer);
 
 void inflate(const std::vector<p2t::Point*> &polyline, const std::vector<p2t::Triangle*> &triangles,
-	std::vector<Vertex> &vertex_buffer, std::vector<Vec3f> &normal_buffer);
+	std::vector<Vertex> &vertex_buffer, std::vector<Vec3f> &normal_buffer,
+	std::vector<int> &triangle_buffer);

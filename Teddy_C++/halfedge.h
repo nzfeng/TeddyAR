@@ -110,6 +110,15 @@ static void add_face(int idx1, int idx2, int idx3,
     std::vector<HEV*> *hevs, std::vector<HEF*> *hefs, 
     std::map<std::pair<int, int>, HE*> &edge_hash) {
 
+    Eigen::Vector3f v1; v1 << hevs->at(idx2)->x - hevs->at(idx1)->x, hevs->at(idx2)->y - hevs->at(idx1)->y, 0.0;
+    Eigen::Vector3f v2; v2 << hevs->at(idx3)->x - hevs->at(idx1)->x, hevs->at(idx3)->y - hevs->at(idx1)->y, 0.0;
+    Eigen::Vector3f cross = v1.cross(v2);
+    if (cross(2) < 0.0) {
+        int tmp = idx1;
+        idx1 = idx3;
+        idx3 = tmp;
+    }
+
     HE *e1 = new HE;
     HE *e2 = new HE;
     HE *e3 = new HE;
