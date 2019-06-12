@@ -11,10 +11,6 @@ public class ARController : MonoBehaviour
     public List<Vector3> points = new List<Vector3>();
 	public bool isSketching;
 
-    //Vector3[] meshVertices;
-    //Vector3[] meshNormals;
-    //int[] meshTriangles;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -47,8 +43,9 @@ public class ARController : MonoBehaviour
             {
                 Vector3 camPos = ARCamera.transform.position;
                 Vector3 camDirection = ARCamera.transform.forward;
-                float spawnDistance = 2;
+                float spawnDistance = 0.7f;
                 Vector3 spawnPos = camPos + (camDirection * spawnDistance);
+                Debug.Log("spawnPos: " + spawnPos);
                 sketchController.spawnPos = spawnPos;
 
                 if (points.Count > 0)

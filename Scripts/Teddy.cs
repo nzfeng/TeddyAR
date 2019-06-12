@@ -2,19 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Poly2Tri;
 
 public class Teddy
 {
 
     // The final method combining everything. 
-    public static void inflate(List<Vector3> points, Vector3[] vertices, Vector3[] normals, int[] triangles)
+    public static TeddyResult inflate(List<Vector3> points)
     {
         Debug.Log("Inside Teddy: " + points.Count);
+        TeddyResult res = new TeddyResult(new List<Vector3>(), new List<Vector3>(), new List<int>());
 
         if (isSelfIntersecting(points) || points.Count < 3)
         {
             Debug.Log("Invalid input");
-            return;
+            return res;
         }
 
         points = resample(points);
@@ -23,11 +25,14 @@ public class Teddy
 
         if (!isPolygonClockwise(points))
         {
+            Debug.Log("Points reversed");
             points.Reverse();
         }
-        Debug.Log("Points reversed");
 
-        List<Triangle> hefs = ConstrainedDelaunay.GenerateTriangulation(points);
+        List<Vertex> hevs = new List<Vertex>();
+        List<Triangle> hefs = p2t_CDT(points, hevs);
+
+        //List<Triangle> hefs = ConstrainedDelaunay.GenerateTriangulation(points);
 
         for (int i=0; i < hefs.Count; i++)
         {
@@ -36,13 +41,15 @@ public class Teddy
         Debug.Log("CDT generated...");
 
         List<HalfEdge> hes = TransformRepresentation.TransformFromTriangleToHalfEdge(hefs);
-        // Get vertices from halfedges
-        List<Vertex> hevs = new List<Vertex>(hes.Count);
-        for (int i=0; i < hes.Count; i++)
-        {
-            hevs[hes[i].v.index] = hes[i].v;
-        }
         Debug.Log("Halfedges generated...");
+
+        //// Get vertices from halfedges
+        //List<Vertex> hevs = new List<Vertex>(hes.Count);
+        //for (int i=0; i < hes.Count; i++)
+        //{
+        //    hevs[hes[i].v.index] = hes[i].v;
+        //}
+        //Debug.Log("Halfedges labeled...");
 
         // Label triangles.
         labelTriangles(hefs);
@@ -53,12 +60,77 @@ public class Teddy
         hes = TransformRepresentation.TransformFromTriangleToHalfEdge(new_hefs);
         Debug.Log("Branches pruned...");
 
+        Debug.Log("points " + points.Count);
+        Debug.Log("hevs " + hevs.Count);
+        Debug.Log("new_hefs " + hevs.Count);
+
+        //List<Vector3> pts = new List<Vector3>();
+        //for (int i=0; i < new_hefs.Count; i++)
+        //{
+        //    pts.Add(new Vector3(new_hefs[i].v1.position.x, new_hefs[i].v1.position.y, new_hefs[i].v1.position.z));
+        //    pts.Add(new Vector3(new_hefs[i].v2.position.x, new_hefs[i].v2.position.y, new_hefs[i].v2.position.z));
+        //    pts.Add(new Vector3(new_hefs[i].v3.position.x, new_hefs[i].v3.position.y, new_hefs[i].v3.position.z));
+        //    pts.Add(new Vector3(new_hefs[i].v1.position.x, new_hefs[i].v1.position.y, new_hefs[i].v1.position.z));
+        //}
+        //res.points = pts;
+        //return res;
+
         // Construct mesh.
-        create_mesh(hevs, new_hefs, vertices, normals, triangles);
+        res = create_mesh(hevs, new_hefs);
         Debug.Log("Mesh generated...");
+        return res;
     }
 
 
+    public static List<Triangle> p2t_CDT(List<Vector3> points, List<Vertex> hevs)
+    {
+        List<PolygonPoint> pts = new List<PolygonPoint>();
+        for (int i=0; i < points.Count; i++)
+        {
+            PolygonPoint p = new PolygonPoint(points[i].x, points[i].y);
+            pts.Add(p);
+        }
+        Polygon poly = new Polygon(pts);
+        P2T.Triangulate(poly);
+        Debug.Log("p2T: " + poly.Triangles.Count);
+
+        // Generate Triangles from p2t triangles. First create Vertex list.
+        for (int i=0; i < points.Count; i++)
+        {
+            hevs.Add(new Vertex(points[i]));
+            hevs[i].index = i;
+            hevs[i].isBoundary = true;
+        }
+        List<Triangle> triangles = new List<Triangle>();
+        for (int i=0; i < poly.Triangles.Count; i++)
+        {
+            int idx1 = FindIndexOfVertex(hevs, poly.Triangles[i].Points[0]);
+            int idx2 = FindIndexOfVertex(hevs, poly.Triangles[i].Points[1]);
+            int idx3 = FindIndexOfVertex(hevs, poly.Triangles[i].Points[2]);
+            triangles.Add(new Triangle(hevs[idx1], hevs[idx2], hevs[idx3]));
+        }
+
+        return triangles;
+    }
+
+    public static bool IsSamePoint(TriangulationPoint p1, TriangulationPoint p2)
+    {
+        double tol = 1e-10;
+        return (Math.Abs(p1.X - p2.X) < tol && Math.Abs(p1.Y - p2.Y) < tol);
+    }
+
+    public static int FindIndexOfVertex(List<Vertex> vertices, TriangulationPoint p)
+    {
+        double tol = 1e-10;
+        for (int i=0; i < vertices.Count; i++)
+        {
+            if (Math.Abs(vertices[i].position.x - p.X) < tol && Math.Abs(vertices[i].position.y - p.Y) < tol)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
 
     /* Check if the input polyline intersects itself. This is the most naive implementation, O(n^2). */
     public static bool isSelfIntersecting(List<Vector3> points)
@@ -86,7 +158,7 @@ public class Teddy
     {
         List<Vector3> newPoints = new List<Vector3>();
         int n = points.Count;
-        float length = 0.01f; // change this if necessary
+        float length = 0.05f; // change this if necessary
         newPoints.Add(new Vector3(points[0].x, points[0].y, 0.0f));
         int i = 0;
 
@@ -126,8 +198,22 @@ public class Teddy
                 k = i;
             }
         }
+        // deal with negative mod
+        int before = (k - 1)%n;
+        if (before < 0)
+        {
+            before += n;
+        }
+        // return Geometry.IsTriangleOrientedClockwise(points[before].XY(), points[k].XY(), points[(k + 1) % n].XY());
 
-        return Geometry.IsTriangleOrientedClockwise(points[(k - 1) % n].XY(), points[k].XY(), points[(k + 1) % n].XY());
+        Vector3 e2 = points[(k + 1) % n] - points[k];
+        Vector3 e1 = points[before] - points[k];
+        Vector3 r = Vector3.Cross(e1, e2);
+        if (r.z < 0.0f)
+        {
+            return false;
+        }
+        return true;
     }
 
 
@@ -176,6 +262,7 @@ public class Teddy
                         if (exists == -1)
                         {
                             add_vertex(new Vertex(new Vector3(fan_center[0], fan_center[1], 0.0f)), false, hevs);
+                            center_idx = hevs.Count - 1;
                         }
                         else
                         {
@@ -306,10 +393,13 @@ public class Teddy
      * Results in a vector of vertices, a vector of vertex normals, and a vector 
      * of triangle vertex indices (which will be 3x the length of the vertex vector.)
      */    
-    public static void create_mesh(List<Vertex> hevs, List<Triangle> hefs, Vector3[] vertices, Vector3[] normals, int[] triangles)
+    public static TeddyResult create_mesh(List<Vertex> hevs, List<Triangle> hefs)
     {
         List<Vertex> vertices_lst = new List<Vertex>();
         List<Triangle> triangles_lst = new List<Triangle>();
+
+        Debug.Log("CM hevs " + hevs.Count);
+        Debug.Log("CM new_hefs " + hevs.Count);
 
 
         // number of points to add to each edge; this number is ad hoc.
@@ -333,14 +423,21 @@ public class Teddy
                         length += (float)Math.Sqrt(x * x + y * y);
                         num++;
                     }
+                    if (he.oppositeEdge == null)
+                    {
+                        break;
+                    }
                     he = he.oppositeEdge.nextEdge;
-                } while (he != hevs[i].halfEdge && he.oppositeEdge != null);
 
-                hevs[i].position.z = length / num;
+                } while (he != hevs[i].halfEdge);
+                // Debug.Log("Elevate: " + i);
+                hevs[i].position = new Vector3(hevs[i].position.x, hevs[i].position.y, length / num);
 
-                numpts = (int) (length / num / 0.001f); // this float is ad hoc
+                numpts = (int) (length / num / 0.01f); // this float is ad hoc
             }
         }
+        Debug.Assert(numpts > 0);
+
 
         // Sew up the triangles!
 
@@ -375,7 +472,7 @@ public class Teddy
                     }
                     List<int> new_indices = new List<int>();
 
-                    Vector3 e = new Vector3(dst.position.x, dst.position.y, 0.0f);
+                    Vector3 e = new Vector3(dst.position.x - src.position.x, dst.position.y - src.position.y, 0.0f);
 
                     float b = e.magnitude;
                     float a = src.position.z;
@@ -384,20 +481,25 @@ public class Teddy
                     for (int k = 0; k < numpts; k++)
                     {
                         float x = (k + 1) * scale * b;
-                        Vertex v = new Vertex(new Vector3(src.position.x + (k + 1) * scale * e.x, src.position.y + (k + 1) * scale * e.y, (float)Math.Sqrt(a * a * b * b - a * a * x * x) / (b * b)));
+                        Vertex v = new Vertex(new Vector3(src.position.x + (k + 1) * scale * e.x, src.position.y + (k + 1) * scale * e.y, (float)Math.Sqrt((a * a * b * b - a * a * x * x) / (b * b))));
                         add_vertex(v, false, vertices_lst);
                         new_indices.Add(vertices_lst.Count - 1);
                     }
+                    if (!IsKeyInDict(v_per_he, get_edge_key(src.index, dst.index))) 
+                    {
+                        v_per_he.Add(get_edge_key(src.index, dst.index), new_indices);
+                    }
 
-                    v_per_he.Add(get_edge_key(src.index, dst.index), new_indices);
                 }
                 he = he.nextEdge;
             } while (he != hef.halfEdge);
         }
 
+
         // Create face array.
         for (int i=0; i < hefs.Count; i++)
         {
+            // Debug.Log("Create face array: " + i);
             Triangle hef = hefs[i];
             // Find the edge that is either on the boundary or on the chordal axis 
             // (between either two interior points or exterior points)
@@ -405,6 +507,7 @@ public class Teddy
             HalfEdge he = hef.halfEdge;
             do
             {
+                Debug.Assert(he.nextEdge != null); 
                 if (he.src.isBoundary && he.nextEdge.src.isBoundary)
                 {
                     boundary = true;
@@ -415,14 +518,19 @@ public class Teddy
                     boundary = false;
                     break;
                 }
+
                 he = he.nextEdge;
             } while (he != hef.halfEdge);
 
-            List<int> v_per_e1 = v_per_he[get_edge_key(he.nextEdge.src.index, he.nextEdge.nextEdge.src.index)];
-            List<int> v_per_e2 = v_per_he[get_edge_key(he.nextEdge.nextEdge.src.index, he.nextEdge.nextEdge.nextEdge.src.index)];
+            List<int> v_per_e1 = GetListFromDict(v_per_he, get_edge_key(he.nextEdge.src.index, he.nextEdge.nextEdge.src.index));
+            List<int> v_per_e2 = GetListFromDict(v_per_he, get_edge_key(he.nextEdge.nextEdge.src.index, he.src.index));
+
+            Debug.Assert(v_per_e1.Count == numpts);
+            Debug.Assert(v_per_e2.Count == numpts);
 
             if (boundary)
             {
+                Debug.Log("Reversed");
                 v_per_e1.Reverse();
                 v_per_e2.Reverse();
             }
@@ -436,9 +544,9 @@ public class Teddy
 
             for (int k=0; k < numpts-1; k++)
             {
-                add_face(v_per_e1[k], v_per_e2[k], v_per_e1[k + 1], vertices_lst, triangles_lst);
+                add_face(v_per_e2[k], v_per_e1[k], v_per_e2[k + 1], vertices_lst, triangles_lst);
 
-                add_face(v_per_e2[k], v_per_e2[k + 1], v_per_e1[k + 1], vertices_lst, triangles_lst);
+                add_face(v_per_e1[k], v_per_e1[k + 1], v_per_e2[k + 1], vertices_lst, triangles_lst);
 
             }
             // end triangle
@@ -455,17 +563,74 @@ public class Teddy
 
         for (int i=0; i < vertices_lst.Count; i++)
         {
-            vertices_vec.Add(vertices_lst[i].position);
-            normals_vec.Add(compute_vnormal(vertices_lst[i]));
+            vertices_vec.Add(new Vector3(vertices_lst[i].position.x*Screen.width/Screen.height, vertices_lst[i].position.y, vertices_lst[i].position.z));
+            // normals_vec.Add(compute_vnormal(vertices_lst[i]));
         }
         for (int i=0; i < triangles_lst.Count; i++)
         {
             addTriangleToBuffer(vertices_lst, triangles_lst[i], triangles_vec);
         }
 
-        vertices = vertices_vec.ToArray();
-        normals = normals_vec.ToArray();
-        triangles = triangles_vec.ToArray();
+        // Add reflection
+        int n = vertices_lst.Count;
+        for (int i = 0; i < n; i++)
+        {
+            Vertex v = new Vertex(new Vector3(vertices_lst[i].position.x * Screen.width / Screen.height, vertices_lst[i].position.y, -vertices_lst[i].position.z));
+            add_vertex(v, false, vertices_lst);
+            vertices_vec.Add(v.position);
+        }
+        for (int i = 0; i < triangles_lst.Count; i++)
+        {
+            int idx1 = triangles_lst[i].v1.index + n;
+            int idx2 = triangles_lst[i].v2.index + n;
+            int idx3 = triangles_lst[i].v3.index + n;
+
+            if (!IsTriangleClockwise(idx1, idx2, idx3, vertices_lst))
+            {
+                int tmp = idx1;
+                idx1 = idx3;
+                idx3 = tmp;
+            }
+
+            triangles_vec.Add(idx1);
+            triangles_vec.Add(idx2);
+            triangles_vec.Add(idx3);
+        }
+
+        TeddyResult res = new TeddyResult(vertices_vec, vertices_vec, triangles_vec);
+        return res;
+    }
+
+
+
+
+    public static List<int> GetListFromDict(Dictionary<Pair, List<int>> v_per_he, Pair pair)
+    {
+        List<int> newList = new List<int>(); // deep copy
+
+        foreach (KeyValuePair<Pair, List<int>> item in v_per_he)
+        {
+            if (item.Key.first == pair.first && item.Key.second == pair.second)
+            {
+                for (int i=0; i < item.Value.Count; i++)
+                {
+                    newList.Add(item.Value[i]);
+                }
+            }
+        }
+        return newList; 
+    }
+
+    public static bool IsKeyInDict(Dictionary<Pair, List<int>> v_per_he, Pair pair)
+    {
+        foreach (KeyValuePair<Pair, List<int>> item in v_per_he)
+        {
+            if (item.Key.first == pair.first && item.Key.second == pair.second)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static Vector3 compute_vnormal(Vertex v)
@@ -519,15 +684,29 @@ public class Teddy
         int idx2 = t.v2.index;
         int idx3 = t.v3.index;
 
-        if (!Geometry.IsTriangleOrientedClockwise(vertices[idx1].position.XY(), vertices[idx1].position.XY(), vertices[idx3].position.XY()))
+        if (!IsTriangleClockwise(idx1, idx2, idx3, vertices))
         {
             int tmp = idx1;
             idx1 = idx3;
             idx3 = tmp;
         }
+
         triangles.Add(idx1);
         triangles.Add(idx2);
         triangles.Add(idx3);
+    }
+
+    public static bool IsTriangleClockwise(int idx1, int idx2, int idx3, List<Vertex> hevs)
+    {
+        Vector3 e2 = hevs[idx3].position - hevs[idx2].position;
+        Vector3 e1 = hevs[idx1].position - hevs[idx2].position;
+        Vector3 r = Vector3.Cross(e1, e2);
+        if (r.z < 0.0f)
+        {
+            return false;
+        }
+        return true;
+
     }
 
     public static void add_vertex(Vertex v, bool isBoundary, List<Vertex> hevs)
@@ -539,7 +718,7 @@ public class Teddy
 
     public static void add_face(int idx1, int idx2, int idx3, List<Vertex> hevs, List<Triangle> new_hefs)
     {
-        if (!Geometry.IsTriangleOrientedClockwise(hevs[idx1].position.XY(), hevs[idx2].position.XY(), hevs[idx3].position.XY()))
+        if (!IsTriangleClockwise(idx1, idx2, idx3, hevs))
         {
             int tmp = idx1;
             idx1 = idx3;

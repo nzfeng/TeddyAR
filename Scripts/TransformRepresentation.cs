@@ -16,6 +16,7 @@ public class TransformRepresentation
 
         for (int i = 0; i < triangles.Count; i++)
         {
+
             Triangle t = triangles[i];
 
             HalfEdge he1 = new HalfEdge(t.v1);
@@ -55,6 +56,7 @@ public class TransformRepresentation
         //Find the half-edges going in the opposite direction
         for (int i = 0; i < halfEdges.Count; i++)
         {
+
             HalfEdge he = halfEdges[i];
 
             Vertex goingToVertex = he.v;

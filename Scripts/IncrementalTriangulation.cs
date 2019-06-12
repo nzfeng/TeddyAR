@@ -38,6 +38,7 @@ public class IncrementalTriangulation
         //Starts at 3 because we have already added 0,1,2
         for (int i = 3; i < points.Count; i++)
         {
+            Debug.Log("IT: " + i);
             Vector3 currentPoint = points[i].position;
 
             //The edges we add this loop or we will get stuck in an endless loop
