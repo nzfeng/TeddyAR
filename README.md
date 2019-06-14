@@ -1,4 +1,4 @@
-# CS174
+# TeddyAR
 
 This is an augmented reality (AR) app for Android implementing *Teddy* ([Igarashi 1999](https://www.cs.toronto.edu/~jacobson/seminar/igarashi-et-al-1999.pdf)), an inflation-based sketch-to-mesh algorithm.
 
