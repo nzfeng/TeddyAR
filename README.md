@@ -21,3 +21,5 @@ This project may be useful as an example of:
 * using plane detection
 * C# programming
 * an implementation of the Teddy drawing system
+
+The PDF includes a further explanation of the Teddy algorithm and the app.
