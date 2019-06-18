@@ -4,11 +4,11 @@ This is an augmented reality (AR) app for Android implementing *Teddy* ([Igarash
 
 <p align="center">
   <img width="180" height="320" src="heart_small.gif">
-  <a        ></a>
+  <a (These GIFs take ~15 seconds.)></a>
   <img width="180" height="320" src="swan_small.gif">
 </p>
 
-(The above GIFs take ~15 seconds.)
+
 
 Constrained Delaunay Triangulation (CDT) is currently implemented using [poly2tri](https://github.com/MaulingMonkey/poly2tri-cs), since it was fast enough to run in real-time. Specifically, the approach of [Sloan 1992](https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf) (implemented here using tutorials from habrador.com) was much too slow.
 
