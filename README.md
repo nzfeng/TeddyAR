@@ -2,7 +2,7 @@
 
 This is an augmented reality (AR) app for Android implementing *Teddy* ([Igarashi 1999](https://www.cs.toronto.edu/~jacobson/seminar/igarashi-et-al-1999.pdf)), an inflation-based sketch-to-mesh algorithm.
 
-![](example.png=320x1200) ![](github_demo.gif)
+![](heart_small.gif) ![](swan_small.gif)
 
 Constrained Delaunay Triangulation (CDT) is currently implemented using [poly2tri](https://github.com/MaulingMonkey/poly2tri-cs), since it was fast enough to run in real-time. Specifically, the approach of [Sloan 1992](https://www.newcastle.edu.au/__data/assets/pdf_file/0019/22519/23_A-fast-algortithm-for-generating-constrained-Delaunay-triangulations.pdf) (implemented here using tutorials from habrador.com) was much too slow.
 
