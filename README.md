@@ -4,7 +4,7 @@ This is an augmented reality (AR) app for Android implementing *Teddy* ([Igarash
 
 <p align="center">
   <img width="180" height="320" src="heart_small.gif">
-  <span (These GIFs take ~15 seconds.)></span>
+  (These GIFs take ~15 seconds.)
   <img width="180" height="320" src="swan_small.gif">
 </p>
 
