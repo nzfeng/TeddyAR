@@ -12,7 +12,7 @@ Constrained Delaunay Triangulation (CDT) is currently implemented using [poly2tr
 
 "Teddy" contains the materials used for the Android app, which was developed in Unity (with scripts in C#.)
 
-There are currently some issues with speed (takes ~10 - 15 seconds to do sketch-to-mesh conversion on a Samsung Galaxy S9, mesh manipulations like translation and enlarge/shrink cause freezing), and a minor issue with mesh appearance. This project was intended as a proof of concept and as an exercise in AR, so the user interface is really only intuitive to the creator.
+There are currently some issues with speed (takes ~10 - 15 seconds to do sketch-to-mesh conversion on a Samsung Galaxy S9, mesh manipulations like translation and enlarge/shrink are laggy), and a minor issue with mesh appearance. This project was intended as a proof of concept and as an exercise in AR, so the user interface is really only intuitive to the creator.
 
 This project may be useful as an example of:
 * using Google ARCore + Unity
